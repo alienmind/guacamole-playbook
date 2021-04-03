@@ -1,0 +1,88 @@
+---
+- name: Guacamole Setup
+  hosts: guacamole
+
+  vars:
+  - required_packages:
+      - git
+      - xrdp
+      - fail2ban
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+
+  tasks:
+  - name: Load secrets
+    include_vars:
+      file: secrets
+
+  - name: Debug
+    debug:
+      var: ansible_fqdn
+      var: guadb_password
+
+  - name: Deploy Docker-CE Repository
+    yum_repository:
+      name: docker-ce
+      description: Docker-CE Repo
+      baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+      enabled: true
+    #notify:
+    #- Add Docker CE GPG Key
+
+  - name: Add Docker CE GPG Key
+    rpm_key:
+      state: present
+      key: https://download.docker.com/linux/centos/gpg
+
+  - name: Deploy EPEL Repository
+    package:
+      name: epel-release
+      state: present
+
+  - name: Deploy required packages from deployed repos
+    package:
+      name: "{{ required_packages }}"
+      state: present
+    notify:
+    - Enable XRDP
+    #loop: "{{ required_packages }}"
+
+  - name: Deploy Docker Compose
+    get_url: 
+      url : https://github.com/docker/compose/releases/download/1.28.6/docker-compose-Linux-x86_64
+      dest: /usr/local/bin/docker-compose
+      mode: 'u+x,g+x'
+
+  - name: Deploy GNOME Desktop
+    package:
+      #name: "@GNOME Desktop"
+      name: "@^gnome-desktop-environment"
+      state: present
+
+  - name: Deploy Containerized Guacamole
+    git:
+      repo: 'https://github.com/alienmind/containerized-guacamole.git'
+      dest: /usr/local/containerized-guacamole
+
+  - name: Deploy Guacamole Config
+    template:
+      src: guacamole/env.j2
+      dest: /usr/local/containerized-guacamole/.env
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+  handlers:
+  - name: Add Docker CE GPG Key
+    rpm_key:
+      state: present
+      key: https://download.docker.com/linux/centos/gpg
+  - name: Enable XRDP
+    service:
+      name: xrdp
+      enabled: yes
+      state: restarted

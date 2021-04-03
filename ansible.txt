@@ -1,0 +1,8 @@
+ansible bdelake -m user -a 'name=vtbig state=present'
+ansible bdelake -m package -a 'name=httpd'
+
+mkdir -p /mnt/big/cdp-parcels/parcel-repo
+ln -sf /mnt/big/cdp-parcels/parcel-repo /var/www/html/parcel-repo
+ansible bdelake -m service -a 'name=httpd state=started enabled=True'
+ansible bdelake -m selinux -a 'policy=targeted state=permissive'
+ansible bdelake -m package -a 'name=java-1.8.0-openjdk,java-1.8.0-openjdk-devel'

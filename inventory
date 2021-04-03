@@ -1,0 +1,10 @@
+[guacamole]
+guacamole.innlabs.org
+
+[master]
+cloudera00
+
+[workers]
+cloudera01
+cloudera02
+cloudera03
