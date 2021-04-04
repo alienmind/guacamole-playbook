@@ -1,0 +1,127 @@
+# Deploy basic server layout for Cloduera on IBM Cloud
+---
+- name: Basic platform
+  hosts: bdelake01
+  vars:
+  - dns_host: 10.127.218.77 # guacamole
+  - required_packages:
+      - epel-release
+      - fail2ban
+      - vim
+      - java-1.8.0-openjdk
+
+  tasks:
+  #- name: Display all variables/facts known for a host
+  #  debug:
+  #    var: hostvars[inventory_hostname]
+  #  tags: debug_info
+
+  #- name: Debug
+  #  debug:
+  #    var:
+  #    - ansible_distribution
+  #
+  
+  - name: Do not allow root login
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      backrefs: yes
+      regexp: '#PermitRootLogin yes'
+      line: 'PermitRootLogin no'
+      backup: yes
+    notify: Restart sshd
+
+
+  - name: Deploy EPEL Repository
+    package:
+      name: epel-release
+      state: present
+
+  - name: Deploy required packages
+    package:
+      name: "{{ required_packages }}"
+      state: present
+
+  - name: Replace / in fstab (ext3 => ext4)
+    lineinfile:
+      dest: /etc/fstab
+      backrefs: yes
+      regexp: '^(.*) / ext3 (.*)$'
+      line: '\1 / ext4 \2'
+      backup: yes
+    notify: tune2fs root filesystem
+ 
+  - name: Stop firewalld
+    service:
+      name: firewalld
+      enabled: no
+      state: stopped
+
+  - name: Temporarily disable SELinux
+    command:
+      cmd: setenforce permissive
+
+  - name: Persist permissive SELinux
+    lineinfile:
+      dest: /etc/selinux/config
+      backrefs: yes
+      regexp: 'SELINUX=(.*)'
+      line: 'SELINUX=permissive'
+      backup: yes
+
+  - name: Change kernel settings
+    command:
+      cmd: '{{ item }}'
+    with_items: 
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/defrag'
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+
+  - name: Persist kernel settings
+    lineinfile:
+      dest: /etc/rc.local
+      backup: yes
+      line: '{{ item }}'
+    with_items: 
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/defrag'
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+
+  - name: Edit limits
+    template:
+      src: cdp/99-cdp.conf
+      dest: '/etc/security/limits.d/99-cdp.conf'
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+  - name: Edit cloud hosts template
+    lineinfile:
+      dest: /etc/cloud/templates/hosts.redhat.tmpl
+      backrefs: yes
+      regexp: '{{ item }}'
+      line: '#{{ item }}'
+      backup: yes
+    with_items:
+    - '127.0.0.1 \{\{fqdn\}\} \{\{hostname\}\}'
+    - '::1 \{\{fqdn\}\} \{\{hostname\}\}'
+ 
+  - name: Change DNS
+    lineinfile:
+      dest: /etc/resolv.conf
+      line: 'nameserver {{ dns_host }}'
+      insertafter: '^; Created by; Created by'
+      backup: yes
+    tags: dns
+ 
+  handlers:
+  - name: Restart sshd
+    service:
+      name: sshd
+      state: restarted
+  - name: tune2fs root filesystem
+    command: '{{ item }}'
+    with_items:
+    - 'tune2fs -O extents,uninit_bg,dir_index /dev/xvda2'
+    #- 'e2fsck -pf /dev/xvda2'
+    #
+
+
