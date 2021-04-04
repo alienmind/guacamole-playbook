@@ -1,8 +1,11 @@
+# Deploy a full containerized GNOME Desktop through Apache Guacamole
 ---
 - name: Guacamole Setup
   hosts: guacamole
 
   vars:
+  - guacamole_path: /usr/local/containerized-guacamole
+
   - required_packages:
       - git
       - xrdp
@@ -13,6 +16,7 @@
       - docker-ce
       - docker-ce-cli
       - containerd.io
+      - python2-pip
 
   tasks:
   - name: Load secrets
@@ -21,13 +25,13 @@
 
   - name: Debug
     debug:
-      var: ansible_fqdn
-      var: guadb_password
+      var:
+      - ansible_fqdn
 
-  - name: Deploy Docker-CE Repository
+  - name: Deploy Docker CE Repository
     yum_repository:
       name: docker-ce
-      description: Docker-CE Repo
+      description: Docker CE Repo
       baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
       enabled: true
     #notify:
@@ -43,7 +47,7 @@
       name: epel-release
       state: present
 
-  - name: Deploy required packages from deployed repos
+  - name: Deploy required packages
     package:
       name: "{{ required_packages }}"
       state: present
@@ -66,15 +70,49 @@
   - name: Deploy Containerized Guacamole
     git:
       repo: 'https://github.com/alienmind/containerized-guacamole.git'
-      dest: /usr/local/containerized-guacamole
+      dest: '{{ guacamole_path }}'
 
   - name: Deploy Guacamole Config
     template:
       src: guacamole/env.j2
-      dest: /usr/local/containerized-guacamole/.env
+      dest: '{{ guacamole_path }}/.env'
       owner: root
       group: root
       mode: u=rw,g=r,o=r
+
+  - name: Deploy Guacamole Redirection Page
+    template:
+      src: guacamole/index.jsp
+      dest: '{{ guacamole_path }}/index.jsp'
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+
+  - name: Deploy Guacamole Helper Script
+    template:
+      src: guacamole/start.sh
+      dest: '{{ guacamole_path }}/start.sh'
+      owner: root
+      group: root
+      mode: u=rwx,g=rx,o=rx
+
+
+  #- name: Deploy Docker Python API
+  #pip:
+  #  name:
+  #  - docker>=1.8.0
+  #  - PyYAML>=3.11
+  #  #- docker-compose>=1.7.0
+
+  #- name: Start Guacamole Containers
+  # community.docker.docker_compose:
+  #   project_src: '{{ guacamole_path }}'
+  #   state: present
+
+  - name: Start Guacamole Containers
+    command:
+      chdir: '{{ guacamole_path }}'
+      cmd: '{{ guacamole_path }}/start.sh'
 
   handlers:
   - name: Add Docker CE GPG Key
@@ -84,5 +122,10 @@
   - name: Enable XRDP
     service:
       name: xrdp
+      enabled: yes
+      state: restarted
+  - name: Enable Docker
+    service:
+      name: docker
       enabled: yes
       state: restarted
