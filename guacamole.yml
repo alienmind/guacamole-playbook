@@ -53,6 +53,7 @@
       state: present
     notify:
     - Enable XRDP
+    - Enable Docker
     #loop: "{{ required_packages }}"
 
   - name: Deploy Docker Compose
