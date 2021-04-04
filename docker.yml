@@ -1,4 +1,4 @@
-# Deploy a full containerized GNOME Desktop through Apache Guacamole
+# Deploy Docker CE and Docker Compose
 ---
 - name: Docker / Compose setup
   hosts: bdelake
