@@ -1,6 +1,9 @@
 [guacamole]
 guacamole.innlabs.org
 
+[bdelake]
+bdelake.innlabs.org
+
 [master]
 cloudera00
 

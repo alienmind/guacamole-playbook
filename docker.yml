@@ -1,0 +1,79 @@
+# Deploy a full containerized GNOME Desktop through Apache Guacamole
+---
+- name: Docker / Compose setup
+  hosts: bdelake
+  vars:
+  - required_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+
+  tasks:
+  #- name: Display all variables/facts known for a host
+  #  debug:
+  #    var: hostvars[inventory_hostname]
+  #  tags: debug_info
+
+  - name: Debug
+    debug:
+      var:
+      - ansible_distribution
+
+  - name: Deploy EPEL Repository
+    yum:
+      name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+      state: present
+
+  - name: Deploy Docker CE Repository
+    yum_repository:
+      name: docker-ce
+      description: Docker CE Repo
+      baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+      enabled: true
+    #notify:
+    #- Add Docker CE GPG Key
+
+  - name: Add Docker CE GPG Key
+    rpm_key:
+      state: present
+      key: https://download.docker.com/linux/centos/gpg
+
+  - name: Enable subscription (RHEL)
+    command:
+      cmd: subscription-manager repos --enable=rhel-7-server-extras-rpms
+    when: ansible_distribution == 'RedHat'
+
+  - name: Deploy required packages
+    package:
+      name: "{{ required_packages }}"
+      state: present
+    #loop: "{{ required_packages }}"
+
+  - name: Deploy Docker Compose
+    get_url: 
+      url : https://github.com/docker/compose/releases/download/1.28.6/docker-compose-Linux-x86_64
+      dest: /usr/local/bin/docker-compose
+      mode: 'u+x,g+x'
+
+  #- name: Deploy Docker Python API
+  #pip:
+  #  name:
+  #  - docker>=1.8.0
+  #  - PyYAML>=3.11
+  #  #- docker-compose>=1.7.0
+
+  #- name: Start Guacamole Containers
+  # community.docker.docker_compose:
+  #   project_src: '{{ guacamole_path }}'
+  #   state: present
+
+  handlers:
+  - name: Add Docker CE GPG Key
+    rpm_key:
+      state: present
+      key: https://download.docker.com/linux/centos/gpg
+  - name: Enable Docker
+    service:
+      name: docker
+      enabled: yes
+      state: restarted
