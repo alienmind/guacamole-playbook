@@ -1,7 +1,6 @@
 # Deploy basic server layout for Cloduera on IBM Cloud
 ---
 - name: Basic platform
-  hosts: bdelake01
   vars:
   - dns_host: 10.127.218.77 # guacamole
   - required_packages:

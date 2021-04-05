@@ -1,0 +1,4 @@
+# Host variables for bdelake01
+---
+ansible_host: 159.8.115.202
+ansible_port: 22

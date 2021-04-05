@@ -4,13 +4,11 @@ guacamole.innlabs.org
 [bdelake]
 bdelake.innlabs.org
 
-[bdelake01]
-159.8.115.202
+[cluster]
+bdelake01
 
 [master]
-cloudera00
+bdelake01
 
 [workers]
-cloudera01
-cloudera02
-cloudera03
+bdelake01
