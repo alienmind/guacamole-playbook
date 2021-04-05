@@ -68,6 +68,12 @@
       name: "@^gnome-desktop-environment"
       state: present
 
+  - name: Remove libvirt / GNOME Boxes
+    package:
+      name: libvirt-daemon-driver-network
+      state: absent
+    notify: Disable libvirtd
+
   - name: Deploy Containerized Guacamole
     git:
       repo: 'https://github.com/alienmind/containerized-guacamole.git'
@@ -130,3 +136,12 @@
       name: docker
       enabled: yes
       state: restarted
+  - name: Disable libvirtd
+    service:
+      name: libvirtd
+      enabled: no
+      state: stopped
+  - name: Kill all dnsmasq
+    command:
+      cmd: killall dnsmasq
+ 

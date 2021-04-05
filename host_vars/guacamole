@@ -1,4 +1,4 @@
-# Host variables for centos
+# Host variables for guacamole
 ---
 ansible_host: guacamole.innlabs.org
 ansible_port: 22
