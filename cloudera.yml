@@ -1,13 +1,21 @@
 # Deploy basic server layout for Cloduera on IBM Cloud
 ---
 - name: Basic platform
+  hosts: cluster
   vars:
   - dns_host: 10.127.218.77 # guacamole
   - required_packages:
+      - git
+      - vim
       - epel-release
       - fail2ban
-      - vim
       - java-1.8.0-openjdk
+      - java-1.8.0-openjdk-devel
+      - wget
+      - curl
+      - bind-utils
+      - rng-tools
+      - python-pip
 
   tasks:
   #- name: Display all variables/facts known for a host
@@ -30,7 +38,6 @@
       backup: yes
     notify: Restart sshd
 
-
   - name: Deploy EPEL Repository
     package:
       name: epel-release
@@ -40,6 +47,7 @@
     package:
       name: "{{ required_packages }}"
       state: present
+    notify: Restart rngd
 
   - name: Replace / in fstab (ext3 => ext4)
     lineinfile:
@@ -84,6 +92,16 @@
     - 'echo never > /sys/kernel/mm/transparent_hugepage/defrag'
     - 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
 
+  - name: Set swappiness
+    lineinfile:
+      dest: /etc/sysctl.conf
+      backup: yes
+      regexp: '^(.*)vm.swappiness (.*)$'
+      line: 'vm.swappiness = 1'
+    with_items: 
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/defrag'
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+
   - name: Edit limits
     template:
       src: cdp/99-cdp.conf
@@ -112,15 +130,27 @@
     tags: dns
  
   handlers:
-  - name: Restart sshd
+  - name: 'Restart sshd'
     service:
-      name: sshd
+      name: 'sshd'
       state: restarted
+      enabled: yes
+  - name: 'Restart rngd'
+    service:
+      name: 'rngd'
+      state: restarted
+      enabled: yes
+  - name: 'Restart {{ item }}'
+    service:
+      name: '{{ item }}'
+      state: restarted
+      enabled: yes
+    with_items:
+    - sshd
+    - rngd
   - name: tune2fs root filesystem
     command: '{{ item }}'
     with_items:
     - 'tune2fs -O extents,uninit_bg,dir_index /dev/xvda2'
     #- 'e2fsck -pf /dev/xvda2'
     #
-
-
